@@ -1,25 +1,48 @@
 library(shiny)
 library(ggplot2)
 library(dplyr)
+library(stringr)
+
+#reads in exceedance beach monthly the converts measurements to percents
+#by multiplying by 100
+#then adds month nums
 exceedance_beach_monthly = read.csv("C:/Users/Kyle/Desktop/Galveston Consulting/Past Work/Task 2/Data/exceedance_beach_monthly.csv")
+exceedance_beach_monthly = data.frame(exceedance_beach_monthly[1], exceedance_beach_monthly[-1] * 100)
 exceedance_beach_monthly = exceedance_beach_monthly %>% mutate(date_num = seq(1,12))
 
+#reads in exceedance station monthly the converts measurements to percents
+#by multiplying by 100
+#then adds month nums
 exceedance_station_monthly  = read.csv("C:/Users/Kyle/Desktop/Galveston Consulting/Past Work/Task 2/Data/exceedance_station_monthly.csv")
+exceedance_station_monthly = data.frame(exceedance_station_monthly[1], exceedance_station_monthly[-1] * 100)
 exceedance_station_monthly  = exceedance_station_monthly %>% mutate(date_num = seq(1,12))
 
-sites = c(1,3,5,7,13,14,17,19,21,22,23,24,25,26,27,28,30,32,34,35,36,37,38,39,40,41,42,44,45,46,47,48,49,50,53,55)
-sites = paste("Site", sites)
+#the first column is years which is correctly read in as int
+#all the other columns are read as chr since they have a percent sign in them
+#example read in as chr "3.45%" so we need to remove the percent sign and conver to numeric
+exceedance_beach_yearly = read.csv("C:/Users/Kyle/Desktop/Galveston Consulting/Past Work/Task 2/Data/exceedance_beach_yearly.csv")
+#deletes percent signs by deleting last charachter of every column except the first which is a year
+exceedance_beach_yearly = data.frame(exceedance_beach_yearly[1], as.data.frame(sapply(exceedance_beach_yearly[-1], str_sub, end = -2)))
+#converts to numeric
+exceedance_beach_yearly = as.data.frame(sapply(exceedance_beach_yearly, as.numeric))
+colnames(exceedance_beach_yearly)[1] = "date_num"
 
-beaches = seq(1, 14)
-beaches = paste("Beach", beaches)
+#exceedance station yearly is not stored as percentages so we will convert it 
+#to percents to be consistent with exceedance beach yearly
+#so we will multiply every column by 100 excent the first column which are years
+exceedance_station_yearly = read.csv("C:/Users/Kyle/Desktop/Galveston Consulting/Past Work/Task 2/Data/exceedance_station_yearly.csv")
+exceedance_station_yearly = data.frame(exceedance_station_yearly[1], exceedance_station_yearly[-1] * 100)
+colnames(exceedance_station_yearly)[1] = "date_num"
 
 ui <- fluidPage(
   wellPanel(
-    selectInput("time_scale", label ="Choose a Time Scale", choices = c("Monthly" = "Month", "Yearly" = "Year")),
-    selectInput("measurement", label = "Choose a Measurement Type", choices = c("Exceedence", "Geometric Mean")),
-    selectInput("location_type", label = "Choose a Location Type", choices = c("Beach", "Station")),
+    selectInput("time_scale", label ="Choose a Time Scale", choices = c("Monthly" = "monthly", "Yearly" = "yearly")),
+    selectInput("measurement", label = "Choose a Measurement Type", choices = c("Exceedence" = "exceedance", 
+                                                                                "Geometric Mean" = "gm")),
+    selectInput("location_type", label = "Choose a Location Type", choices = c("Beach" = "beach", 
+                                                                               "Station" = "station")),
     conditionalPanel(
-      condition="input.location_type == 'Beach'",
+      condition="input.location_type == 'beach'",
       selectInput(inputId = "beach_id", 
                   label = "Select Beach ID:",
                   choices = c("Beach 1" = "TX822495",
@@ -39,7 +62,7 @@ ui <- fluidPage(
       ),
     ),
     conditionalPanel(
-      condition="input.location_type == 'Station'",
+      condition="input.location_type == 'station'",
       selectInput(inputId = "station_id", 
                   label = "Select Station ID:",
                   choices = c("Site 1" = "GAL001",
@@ -82,37 +105,68 @@ ui <- fluidPage(
                   )
       ),
   ),
-  #plotOutput("plot", width = "400px"),
-  conditionalPanel(
-    condition="input.location_type == 'Beach'",
-    plotOutput("beach_plot", width = "500px")
-  ),
-  conditionalPanel(
-    condition="input.location_type == 'Station'",
-    plotOutput("station_plot", width = "500px")
-  )
+  plotOutput("output_plot", width = "400px"),
 )
 server <- function(input, output, session) {
-  output$beach_plot = renderPlot({ggplot(data = exceedance_beach_monthly, aes_string(x = "date_num", y = input$beach_id)) +
+  # output$beach_plot = renderPlot({ggplot(data = exceedance_beach_monthly, aes_string(x = "date_num", y = input$beach_id)) +
+  #     geom_point() +
+  #     stat_smooth(method = "lm",
+  #                 formula = y ~ x,
+  #                 geom = "smooth") +
+  #     xlab(input$time_scale) +
+  #     ylab(input$measurement) +
+  #     scale_x_continuous(breaks = seq(1,12),labels = substr(month.name, 1, 3))
+  #   }, res = 96)
+  # 
+  # output$station_plot = renderPlot({ggplot(data = exceedance_station_monthly, aes_string(x = "date_num", y = input$station_id)) +
+  #     geom_point() +
+  #     stat_smooth(method = "lm",
+  #                 formula = y ~ x,
+  #                 geom = "smooth") +
+  #     xlab(input$time_scale) +
+  #     ylab(input$measurement) +
+  #     scale_x_continuous(breaks = seq(1,12),labels = substr(month.name, 1, 3))
+  #   }, res = 96)
+  
+  output$output_plot = renderPlot({
+      
+      #dynamically changes the name of the accessed data set based on the user input
+      data_Set_name = paste0(input$measurement,"_", input$location_type,"_", input$time_scale)
+      #since it is stored as a charachter we need to change it to a symbol so
+      #that r recognizes it as an object
+      data_set = eval(as.symbol(data_Set_name))
+      
+      #changes the column the plot will access
+      #based on if selected as beach or station
+      if(input$location_type == 'beach'){
+        location_id = input$beach_id
+      } else{
+        location_id = input$station_id
+      }
+      
+      #creates the ticks marks for the ggplot based on if data
+      #is monthly or yearly
+      #break list is the location of the tick marks for the x-axis
+      #label list is the names that will show up
+      #the names are years if yearly and months if monthly
+      
+      if(input$time_scale == 'monthly'){
+        break_list = seq(1,12)
+        label_list = substr(month.name, 1, 3)
+      } else{ #occurs if time_scale is Year
+        break_list = seq(2009, 2021, by = 2)
+        label_list = break_list
+      }
+      
+      ggplot(data = data_set, aes_string(x = "date_num", y = location_id)) +
       geom_point() +
       stat_smooth(method = "lm",
                   formula = y ~ x,
                   geom = "smooth") +
       xlab(input$time_scale) +
       ylab(input$measurement) +
-      scale_x_continuous(breaks = seq(1,12),labels = substr(month.name, 1, 3))
-    }, res = 96)
-  
-  output$station_plot = renderPlot({ggplot(data = exceedance_station_monthly, aes_string(x = "date_num", y = input$station_id)) +
-      geom_point() +
-      stat_smooth(method = "lm",
-                  formula = y ~ x,
-                  geom = "smooth") +
-      xlab(input$time_scale) +
-      ylab(input$measurement) +
-      scale_x_continuous(breaks = seq(1,12),labels = substr(month.name, 1, 3))
-    }, res = 96)
-  
+      scale_x_continuous(breaks = break_list,labels = label_list)
+  }, res = 96)
 }
 
 shinyApp(ui, server)
