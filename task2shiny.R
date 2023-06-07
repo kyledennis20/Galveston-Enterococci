@@ -34,6 +34,15 @@ exceedance_station_yearly = read.csv("C:/Users/Kyle/Desktop/Galveston Consulting
 exceedance_station_yearly = data.frame(exceedance_station_yearly[1], exceedance_station_yearly[-1] * 100)
 colnames(exceedance_station_yearly)[1] = "date_num"
 
+#the csv file was saved with a bunch of missing rows so we have to remove them using na.omit()
+gm_beach_yearly = read.csv("C:/Users/Kyle/Desktop/Galveston Consulting/Past Work/Task 2/Data/gm_beach_yearly.csv")
+colnames(gm_beach_yearly)[1] = "date_num"
+gm_beach_yearly = gm_beach_yearly %>% na.omit()
+
+gm_station_yearly = read.csv("C:/Users/Kyle/Desktop/Galveston Consulting/Past Work/Task 2/Data/gm_station_yearly.csv")
+colnames(gm_station_yearly)[1] = "date_num"
+gm_station_yearly = gm_station_yearly %>% na.omit()
+
 ui <- fluidPage(
   wellPanel(
     selectInput("time_scale", label ="Choose a Time Scale", choices = c("Monthly" = "monthly", "Yearly" = "yearly")),
@@ -154,7 +163,11 @@ server <- function(input, output, session) {
         break_list = seq(1,12)
         label_list = substr(month.name, 1, 3)
       } else{ #occurs if time_scale is Year
-        break_list = seq(2009, 2021, by = 2)
+        #since different data sets have different start and end years we choose
+        #the years that will be represented dynamically
+        min_year = min(data_set[1])
+        max_year = max(data_set[1])
+        break_list = seq(min_year, max_year, by = 2)
         label_list = break_list
       }
       
