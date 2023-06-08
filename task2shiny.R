@@ -4,6 +4,10 @@ library(dplyr)
 library(ggplot2)
 library(stringr)
 library(lubridate)
+library(readxl)
+
+#centers ggplot title
+theme_update(plot.title = element_text(hjust = 0.5))
 
 #reads in exceedance beach monthly the converts measurements to percents
 #by multiplying by 100
@@ -46,6 +50,11 @@ colnames(gm_station_yearly)[1] = "date_num"
 gm_station_yearly = gm_station_yearly %>% na.omit()
 
 gm_beach_monthly = read.csv("gm_beach_monthly.csv")
+colnames(gm_beach_monthly)[1] = "date_num"
+gm_beach_monthly = gm_beach_monthly %>% separate(col = date_num, into = c("Month", 'Year'))
+gm_beach_monthly$Month = substr(gm_beach_monthly$Month, 1, 3)
+gm_beach_monthly = gm_beach_monthly %>% unite(col = "date_num", c("Year", "Month"), sep = '-')
+gm_beach_monthly$date_num = ym(gm_beach_monthly$date_num)
 
 #it adds day to the date which I don't like but will fix later
 #for now just know that the day is meaningless since it is an average across
@@ -53,6 +62,8 @@ gm_beach_monthly = read.csv("gm_beach_monthly.csv")
 gm_station_monthly = read.csv("gm_station_monthly.csv")
 gm_station_monthly = gm_station_monthly %>% unite(col = "date_num", c("YEAR", "Month"), sep = '-')
 gm_station_monthly$date_num = ym(gm_station_monthly$date_num)
+
+names = read_excel("beach_names.xlsx")
 
 ui <- fluidPage(
   wellPanel(
@@ -125,34 +136,15 @@ ui <- fluidPage(
                   )
       ),
   ),
-  plotOutput("output_plot", width = "400px"),
+  plotOutput("output_plot", width = "500px"),
 )
 server <- function(input, output, session) {
-  # output$beach_plot = renderPlot({ggplot(data = exceedance_beach_monthly, aes_string(x = "date_num", y = input$beach_id)) +
-  #     geom_point() +
-  #     stat_smooth(method = "lm",
-  #                 formula = y ~ x,
-  #                 geom = "smooth") +
-  #     xlab(input$time_scale) +
-  #     ylab(input$measurement) +
-  #     scale_x_continuous(breaks = seq(1,12),labels = substr(month.name, 1, 3))
-  #   }, res = 96)
-  # 
-  # output$station_plot = renderPlot({ggplot(data = exceedance_station_monthly, aes_string(x = "date_num", y = input$station_id)) +
-  #     geom_point() +
-  #     stat_smooth(method = "lm",
-  #                 formula = y ~ x,
-  #                 geom = "smooth") +
-  #     xlab(input$time_scale) +
-  #     ylab(input$measurement) +
-  #     scale_x_continuous(breaks = seq(1,12),labels = substr(month.name, 1, 3))
-  #   }, res = 96)
   
   output$output_plot = renderPlot({
       
       #dynamically changes the name of the accessed data set based on the user input
       data_Set_name = paste0(input$measurement,"_", input$location_type,"_", input$time_scale)
-      #since it is stored as a charachter we need to change it to a symbol so
+      #since it is stored as a character we need to change it to a symbol so
       #that r recognizes it as an object
       data_set = eval(as.symbol(data_Set_name))
       
@@ -166,8 +158,10 @@ server <- function(input, output, session) {
       #based on if selected as beach or station
       if(input$location_type == 'beach'){
         location_id = input$beach_id
+        title_location = 'Beach'
       } else{
         location_id = input$station_id
+        title_location = 'Site'
       }
       
       #creates the ticks marks for the ggplot based on if data
@@ -181,6 +175,7 @@ server <- function(input, output, session) {
         label_list = substr(month.name, 1, 3)
         
         x_label = "Month"
+        title_time_Scale = "Monthly"
       } else{ #occurs if time_scale is Year
         #since different data sets have different start and end years we choose
         #the years that will be represented dynamically
@@ -190,20 +185,24 @@ server <- function(input, output, session) {
         label_list = break_list
         
         x_label = "Year"
+        title_time_Scale = "Yearly"
       }
+      
+      title = paste(title_location, title_time_Scale, y_label)
       
       #we needed to use na.rm = TRUE because in the gm monthly for beaches and stations
       #there are months without measurements
       
       ggplot(data = data_set, aes_string(x = "date_num", y = location_id)) +
-      geom_point(na.rm = TRUE) +
+      geom_point(na.rm = TRUE, colour = "purple") +
       stat_smooth(method = "lm",
                   formula = y ~ x,
                   geom = "smooth",
                   na.rm = TRUE) +
       xlab(x_label) +
       ylab(y_label) +
-      scale_x_continuous(breaks = break_list,labels = label_list)
+      scale_x_continuous(breaks = break_list,labels = label_list) +
+      ggtitle(title)
   }, res = 96)
 }
 
