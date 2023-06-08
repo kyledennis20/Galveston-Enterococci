@@ -1,7 +1,9 @@
 library(shiny)
-library(ggplot2)
+library(tidyr)
 library(dplyr)
+library(ggplot2)
 library(stringr)
+library(lubridate)
 
 #reads in exceedance beach monthly the converts measurements to percents
 #by multiplying by 100
@@ -42,6 +44,15 @@ gm_beach_yearly = gm_beach_yearly %>% na.omit()
 gm_station_yearly = read.csv("C:/Users/Kyle/Desktop/Galveston Consulting/Past Work/Task 2/Data/gm_station_yearly.csv")
 colnames(gm_station_yearly)[1] = "date_num"
 gm_station_yearly = gm_station_yearly %>% na.omit()
+
+gm_beach_monthly = read.csv("C:/Users/Kyle/Desktop/Galveston Consulting/Past Work/Task 2/Data/gm_beach_monthly.csv")
+
+#it adds day to the date which I don't like but will fix later
+#for now just know that the day is meaningless since it is an average across
+#a specific month in a given year
+gm_station_monthly = read.csv("C:/Users/Kyle/Desktop/Galveston Consulting/Past Work/Task 2/Data/gm_station_monthly.csv")
+gm_station_monthly = gm_station_monthly %>% unite(col = "date_num", c("YEAR", "Month"), sep = '-')
+gm_station_monthly$date_num = ym(gm_station_monthly$date_num)
 
 ui <- fluidPage(
   wellPanel(
@@ -145,6 +156,12 @@ server <- function(input, output, session) {
       #that r recognizes it as an object
       data_set = eval(as.symbol(data_Set_name))
       
+      if(input$measurement == "gm"){
+        y_label = "Geometric Mean"
+      } else{
+        y_label = "Percent Exceedance"
+      }
+      
       #changes the column the plot will access
       #based on if selected as beach or station
       if(input$location_type == 'beach'){
@@ -162,6 +179,8 @@ server <- function(input, output, session) {
       if(input$time_scale == 'monthly'){
         break_list = seq(1,12)
         label_list = substr(month.name, 1, 3)
+        
+        x_label = "Month"
       } else{ #occurs if time_scale is Year
         #since different data sets have different start and end years we choose
         #the years that will be represented dynamically
@@ -169,15 +188,21 @@ server <- function(input, output, session) {
         max_year = max(data_set[1])
         break_list = seq(min_year, max_year, by = 2)
         label_list = break_list
+        
+        x_label = "Year"
       }
       
+      #we needed to use na.rm = TRUE because in the gm monthly for beaches and stations
+      #there are months without measurements
+      
       ggplot(data = data_set, aes_string(x = "date_num", y = location_id)) +
-      geom_point() +
+      geom_point(na.rm = TRUE) +
       stat_smooth(method = "lm",
                   formula = y ~ x,
-                  geom = "smooth") +
-      xlab(input$time_scale) +
-      ylab(input$measurement) +
+                  geom = "smooth",
+                  na.rm = TRUE) +
+      xlab(x_label) +
+      ylab(y_label) +
       scale_x_continuous(breaks = break_list,labels = label_list)
   }, res = 96)
 }
