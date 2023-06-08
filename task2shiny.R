@@ -8,21 +8,21 @@ library(lubridate)
 #reads in exceedance beach monthly the converts measurements to percents
 #by multiplying by 100
 #then adds month nums
-exceedance_beach_monthly = read.csv("C:/Users/Kyle/Desktop/Galveston Consulting/Past Work/Task 2/Data/exceedance_beach_monthly.csv")
+exceedance_beach_monthly = read.csv("exceedance_beach_monthly.csv")
 exceedance_beach_monthly = data.frame(exceedance_beach_monthly[1], exceedance_beach_monthly[-1] * 100)
 exceedance_beach_monthly = exceedance_beach_monthly %>% mutate(date_num = seq(1,12))
 
 #reads in exceedance station monthly the converts measurements to percents
 #by multiplying by 100
 #then adds month nums
-exceedance_station_monthly  = read.csv("C:/Users/Kyle/Desktop/Galveston Consulting/Past Work/Task 2/Data/exceedance_station_monthly.csv")
+exceedance_station_monthly  = read.csv("exceedance_station_monthly.csv")
 exceedance_station_monthly = data.frame(exceedance_station_monthly[1], exceedance_station_monthly[-1] * 100)
 exceedance_station_monthly  = exceedance_station_monthly %>% mutate(date_num = seq(1,12))
 
 #the first column is years which is correctly read in as int
 #all the other columns are read as chr since they have a percent sign in them
 #example read in as chr "3.45%" so we need to remove the percent sign and conver to numeric
-exceedance_beach_yearly = read.csv("C:/Users/Kyle/Desktop/Galveston Consulting/Past Work/Task 2/Data/exceedance_beach_yearly.csv")
+exceedance_beach_yearly = read.csv("exceedance_beach_yearly.csv")
 #deletes percent signs by deleting last charachter of every column except the first which is a year
 exceedance_beach_yearly = data.frame(exceedance_beach_yearly[1], as.data.frame(sapply(exceedance_beach_yearly[-1], str_sub, end = -2)))
 #converts to numeric
@@ -32,25 +32,25 @@ colnames(exceedance_beach_yearly)[1] = "date_num"
 #exceedance station yearly is not stored as percentages so we will convert it 
 #to percents to be consistent with exceedance beach yearly
 #so we will multiply every column by 100 excent the first column which are years
-exceedance_station_yearly = read.csv("C:/Users/Kyle/Desktop/Galveston Consulting/Past Work/Task 2/Data/exceedance_station_yearly.csv")
+exceedance_station_yearly = read.csv("exceedance_station_yearly.csv")
 exceedance_station_yearly = data.frame(exceedance_station_yearly[1], exceedance_station_yearly[-1] * 100)
 colnames(exceedance_station_yearly)[1] = "date_num"
 
 #the csv file was saved with a bunch of missing rows so we have to remove them using na.omit()
-gm_beach_yearly = read.csv("C:/Users/Kyle/Desktop/Galveston Consulting/Past Work/Task 2/Data/gm_beach_yearly.csv")
+gm_beach_yearly = read.csv("gm_beach_yearly.csv")
 colnames(gm_beach_yearly)[1] = "date_num"
 gm_beach_yearly = gm_beach_yearly %>% na.omit()
 
-gm_station_yearly = read.csv("C:/Users/Kyle/Desktop/Galveston Consulting/Past Work/Task 2/Data/gm_station_yearly.csv")
+gm_station_yearly = read.csv("gm_station_yearly.csv")
 colnames(gm_station_yearly)[1] = "date_num"
 gm_station_yearly = gm_station_yearly %>% na.omit()
 
-gm_beach_monthly = read.csv("C:/Users/Kyle/Desktop/Galveston Consulting/Past Work/Task 2/Data/gm_beach_monthly.csv")
+gm_beach_monthly = read.csv("gm_beach_monthly.csv")
 
 #it adds day to the date which I don't like but will fix later
 #for now just know that the day is meaningless since it is an average across
 #a specific month in a given year
-gm_station_monthly = read.csv("C:/Users/Kyle/Desktop/Galveston Consulting/Past Work/Task 2/Data/gm_station_monthly.csv")
+gm_station_monthly = read.csv("gm_station_monthly.csv")
 gm_station_monthly = gm_station_monthly %>% unite(col = "date_num", c("YEAR", "Month"), sep = '-')
 gm_station_monthly$date_num = ym(gm_station_monthly$date_num)
 
