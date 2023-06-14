@@ -9,20 +9,21 @@ library(readxl)
 #centers ggplot title
 theme_update(plot.title = element_text(hjust = 0.5))
 
-#reads in exceedance beach monthly the converts measurements to percents
+#reads in exceedance beach monthly then converts measurements to percents
 #by multiplying by 100
 #then adds month nums
 exceedance_beach_monthly = read.csv("exceedance_beach_monthly.csv")
 exceedance_beach_monthly = data.frame(exceedance_beach_monthly[1], exceedance_beach_monthly[-1] * 100)
 exceedance_beach_monthly = exceedance_beach_monthly %>% mutate(date_num = seq(1,12))
 
-#reads in exceedance station monthly the converts measurements to percents
+#reads in exceedance station monthly then converts measurements to percents
 #by multiplying by 100
 #then adds month nums
 exceedance_station_monthly  = read.csv("exceedance_station_monthly.csv")
 exceedance_station_monthly = data.frame(exceedance_station_monthly[1], exceedance_station_monthly[-1] * 100)
 exceedance_station_monthly  = exceedance_station_monthly %>% mutate(date_num = seq(1,12))
 
+#reads in exceedance beach yearly
 #the first column is years which is correctly read in as int
 #all the other columns are read as chr since they have a percent sign in them
 #example read in as chr "3.45%" so we need to remove the percent sign and conver to numeric
@@ -33,6 +34,7 @@ exceedance_beach_yearly = data.frame(exceedance_beach_yearly[1], as.data.frame(s
 exceedance_beach_yearly = as.data.frame(sapply(exceedance_beach_yearly, as.numeric))
 colnames(exceedance_beach_yearly)[1] = "date_num"
 
+#reads in exceedance station yearls
 #exceedance station yearly is not stored as percentages so we will convert it 
 #to percents to be consistent with exceedance beach yearly
 #so we will multiply every column by 100 excent the first column which are years
@@ -40,15 +42,23 @@ exceedance_station_yearly = read.csv("exceedance_station_yearly.csv")
 exceedance_station_yearly = data.frame(exceedance_station_yearly[1], exceedance_station_yearly[-1] * 100)
 colnames(exceedance_station_yearly)[1] = "date_num"
 
+#reads in gm beach yearly
 #the csv file was saved with a bunch of missing rows so we have to remove them using na.omit()
 gm_beach_yearly = read.csv("gm_beach_yearly.csv")
 colnames(gm_beach_yearly)[1] = "date_num"
 gm_beach_yearly = gm_beach_yearly %>% na.omit()
 
+#reads in gm station yearly
+#again have to correct missing values
 gm_station_yearly = read.csv("gm_station_yearly.csv")
 colnames(gm_station_yearly)[1] = "date_num"
 gm_station_yearly = gm_station_yearly %>% na.omit()
 
+#reads in gm beach monthly
+#in gm beach monthly csv, date is stored as character month followed by year
+#ex: "January-09" for January 2009
+#we change to a date time value, note the date time value adds a day value (first of the month)
+#this is uninformative since the row represents the entire month, not a specific day
 gm_beach_monthly = read.csv("gm_beach_monthly.csv")
 colnames(gm_beach_monthly)[1] = "date_num"
 gm_beach_monthly = gm_beach_monthly %>% separate(col = date_num, into = c("Month", 'Year'))
@@ -56,6 +66,7 @@ gm_beach_monthly$Month = substr(gm_beach_monthly$Month, 1, 3)
 gm_beach_monthly = gm_beach_monthly %>% unite(col = "date_num", c("Year", "Month"), sep = '-')
 gm_beach_monthly$date_num = ym(gm_beach_monthly$date_num)
 
+#reads in gm station yearly
 #it adds day to the date which I don't like but will fix later
 #for now just know that the day is meaningless since it is an average across
 #a specific month in a given year
@@ -63,15 +74,25 @@ gm_station_monthly = read.csv("gm_station_monthly.csv")
 gm_station_monthly = gm_station_monthly %>% unite(col = "date_num", c("YEAR", "Month"), sep = '-')
 gm_station_monthly$date_num = ym(gm_station_monthly$date_num)
 
+#reads in name of beaches and other info from web
 names = read_excel("beach_names.xlsx")
 
+#creates the UI page layout
 ui <- fluidPage(
   wellPanel(
+    #whether the user wants monthly or yearly data
     selectInput("time_scale", label ="Choose a Time Scale", choices = c("Monthly" = "monthly", "Yearly" = "yearly")),
+    
+    #whether the user wants exeedence or geometric mean
     selectInput("measurement", label = "Choose a Measurement Type", choices = c("Exceedence" = "exceedance", 
                                                                                 "Geometric Mean" = "gm")),
+    
+    #whether the user wants the beach or the station
     selectInput("location_type", label = "Choose a Location Type", choices = c("Beach" = "beach", 
                                                                                "Station" = "station")),
+    
+    #if the user wants beach data, allows them to select the beach
+    #will only show up if location_type is beach
     conditionalPanel(
       condition="input.location_type == 'beach'",
       selectInput(inputId = "beach_id", 
@@ -92,6 +113,9 @@ ui <- fluidPage(
                               "Beach 14" = "TX327206")
       ),
     ),
+    
+    #if the user wants station data, allows them to select the station
+    #will only show up if location_type is station
     conditionalPanel(
       condition="input.location_type == 'station'",
       selectInput(inputId = "station_id", 
@@ -136,8 +160,12 @@ ui <- fluidPage(
                   )
       ),
   ),
+  
+  #plots the output graph
   plotOutput("output_plot", width = "500px"),
 )
+
+#creates the graph the user will actually see
 server <- function(input, output, session) {
   
   output$output_plot = renderPlot({
@@ -193,6 +221,7 @@ server <- function(input, output, session) {
       #we needed to use na.rm = TRUE because in the gm monthly for beaches and stations
       #there are months without measurements
       
+      #plots the dynamically created graph
       ggplot(data = data_set, aes_string(x = "date_num", y = location_id)) +
       geom_point(na.rm = TRUE, colour = "purple") +
       stat_smooth(method = "lm",
@@ -206,4 +235,5 @@ server <- function(input, output, session) {
   }, res = 96)
 }
 
+#runs the app
 shinyApp(ui, server)
